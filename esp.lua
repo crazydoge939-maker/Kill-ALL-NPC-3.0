@@ -105,10 +105,8 @@ ToggleButton.MouseButton1Click:Connect(toggleKilling)
 local function findHumanoids()
     local npcs = {}
     for _, v in pairs(workspace:GetDescendants()) do
-        if v:IsA("Humanoid") and v.Parent and v.Parent:FindFirstChildOfClass("Humanoid") then
-            if not game.Players:GetPlayerFromCharacter(v.Parent) then
-                table.insert(npcs, v.Parent)
-            end
+        if v:IsA("Humanoid") and v.Parent and not game.Players:GetPlayerFromCharacter(v.Parent) then
+            table.insert(npcs, v.Parent)
         end
     end
     return npcs
@@ -161,6 +159,19 @@ local function updateKillCount()
     KillCountLabel.Text = displayText
 end
 
+-- Важная функция: телепортировать NPC к игроку и убить
+local function teleportAndKill(npc)
+    if npc and npc:FindFirstChildOfClass("Humanoid") and npc:FindFirstChild("HumanoidRootPart") then
+        local hrp = npc.HumanoidRootPart
+        local playerHRP = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if playerHRP then
+            hrp.CFrame = playerHRP.CFrame * CFrame.new(0, 0, -2)
+        end
+        -- Убиваем NPC
+        npc.Humanoid.Health = 0
+    end
+end
+
 -- Обновление GUI каждые 0.5 сек
 coroutine.wrap(function()
     while true do
@@ -177,16 +188,13 @@ runService.Heartbeat:Connect(function()
         local progress = math.min(elapsed / killInterval, 1)
         ProgressBar.Size = UDim2.new(progress, 0, 1, 0)
         if elapsed >= killInterval then
-            -- Убить NPC
+            -- Находим всех NPC
             local npcs = findHumanoids()
             for _, npc in pairs(npcs) do
-                local humanoid = npc:FindFirstChildOfClass("Humanoid")
-                if humanoid and humanoid.Health > 0 then
-                    -- Подсветка
-                    highlightNPC(npc)
-                    -- Убийство
-                    humanoid.Health = 0
-                end
+                -- Телепортируем и убиваем
+                teleportAndKill(npc)
+                -- Подсветка (опционально)
+                highlightNPC(npc)
             end
             lastKillTime = currentTime
             updateKillCount()
