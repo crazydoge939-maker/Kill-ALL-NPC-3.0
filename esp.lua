@@ -13,54 +13,99 @@ ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = game.CoreGui
 
 local Frame = Instance.new("Frame")
-Frame.Size = UDim2.new(0, 250, 0, 150)
-Frame.Position = UDim2.new(0, 10, 0, 10)
-Frame.BackgroundColor3 = Color3.fromRGB(30,30,30)
+Frame.Size = UDim2.new(0, 300, 0, 180)
+Frame.Position = UDim2.new(0, 20, 0, 20)
+Frame.BackgroundColor3 = Color3.fromRGB(40, 44, 52)
+Frame.BorderSizePixel = 0
 Frame.Parent = ScreenGui
+-- Скругление углов
+local UIStroke = Instance.new("UICorner")
+UIStroke.CornerRadius = UDim.new(0, 12)
+UIStroke.Parent = Frame
 
+local UIGradient = Instance.new("UIGradient")
+UIGradient.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(50, 54, 62)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(30, 34, 42))
+}
+UIGradient.Parent = Frame
+
+-- Заголовок
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, 30)
+Title.BackgroundTransparency = 1
+Title.Text = "Auto Killer"
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 20
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.Parent = Frame
+
+-- Кнопка переключения
 local ToggleButton = Instance.new("TextButton")
-ToggleButton.Size = UDim2.new(0, 100, 0, 25)
-ToggleButton.Position = UDim2.new(0, 10, 0, 10)
+ToggleButton.Size = UDim2.new(0, 120, 0, 35)
+ToggleButton.Position = UDim2.new(0, 20, 0, 50)
+ToggleButton.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
+ToggleButton.Font = Enum.Font.GothamBold
+ToggleButton.TextSize = 16
+ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 ToggleButton.Text = "Начать убийство"
+local buttonCorner = Instance.new("UICorner")
+buttonCorner.CornerRadius = UDim.new(0, 8)
+buttonCorner.Parent = ToggleButton
 ToggleButton.Parent = Frame
 
+-- Статистика жертв
 local KillCountLabel = Instance.new("TextLabel")
-KillCountLabel.Size = UDim2.new(0, 230, 0, 60)
-KillCountLabel.Position = UDim2.new(0, 10, 0, 45)
+KillCountLabel.Size = UDim2.new(1, -40, 0, 70)
+KillCountLabel.Position = UDim2.new(0, 20, 0, 95)
+KillCountLabel.BackgroundTransparency = 1
 KillCountLabel.Text = "Жертвы:\n"
 KillCountLabel.TextWrapped = true
 KillCountLabel.TextXAlignment = Enum.TextXAlignment.Left
-KillCountLabel.BackgroundTransparency = 1
-KillCountLabel.TextColor3 = Color3.new(1,1,1)
+KillCountLabel.TextYAlignment = Enum.TextYAlignment.Top
+KillCountLabel.Font = Enum.Font.Gotham
+KillCountLabel.TextSize = 14
+KillCountLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 KillCountLabel.Parent = Frame
 
+-- Прогрессбар
+local ProgressBackground = Instance.new("Frame")
+ProgressBackground.Size = UDim2.new(1, -40, 0, 10)
+ProgressBackground.Position = UDim2.new(0, 20, 0, 165)
+ProgressBackground.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+ProgressBackground.BorderSizePixel = 0
+local progressCorner = Instance.new("UICorner")
+progressCorner.CornerRadius = UDim.new(0, 5)
+progressCorner.Parent = ProgressBackground
+ProgressBackground.Parent = Frame
+
 local ProgressBar = Instance.new("Frame")
-ProgressBar.Size = UDim2.new(0, 230, 0, 10)
-ProgressBar.Position = UDim2.new(0, 10, 0, 115)
-ProgressBar.BackgroundColor3 = Color3.fromRGB(0,255,0)
-ProgressBar.Parent = Frame
+ProgressBar.Size = UDim2.new(0, 0, 1, 0)
+ProgressBar.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+ProgressBar.BorderSizePixel = 0
+local progressInnerCorner = Instance.new("UICorner")
+progressInnerCorner.CornerRadius = UDim.new(0, 5)
+ProgressBar.Parent = ProgressBackground
 
-local function updateProgressBar(progress)
-    ProgressBar.Size = UDim2.new(progress, 0, 0, 10)
-end
-
+-- Функции переключения
 local function toggleKilling()
     isKilling = not isKilling
     if isKilling then
         ToggleButton.Text = "Стоп"
+        ToggleButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
     else
         ToggleButton.Text = "Начать убийство"
+        ToggleButton.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
     end
 end
 
 ToggleButton.MouseButton1Click:Connect(toggleKilling)
 
--- Функция для поиска NPC
+-- Функция поиска NPC
 local function findHumanoids()
     local npcs = {}
     for _, v in pairs(workspace:GetDescendants()) do
         if v:IsA("Humanoid") and v.Parent and v.Parent:FindFirstChildOfClass("Humanoid") then
-            -- исключаем игроков
             if not game.Players:GetPlayerFromCharacter(v.Parent) then
                 table.insert(npcs, v.Parent)
             end
@@ -129,7 +174,8 @@ runService.Heartbeat:Connect(function()
     if isKilling then
         local currentTime = tick()
         local elapsed = currentTime - lastKillTime
-        updateProgressBar(elapsed / killInterval)
+        local progress = math.min(elapsed / killInterval, 1)
+        ProgressBar.Size = UDim2.new(progress, 0, 1, 0)
         if elapsed >= killInterval then
             -- Убить NPC
             local npcs = findHumanoids()
@@ -146,11 +192,11 @@ runService.Heartbeat:Connect(function()
             updateKillCount()
         end
     else
-        updateProgressBar(0)
+        ProgressBar.Size = UDim2.new(0, 0, 1, 0)
     end
 end)
 
--- Перемещение GUI
+-- Перетаскивание GUI
 local dragging = false
 local dragStart
 local startPos
