@@ -1,13 +1,10 @@
 -- Основные переменные
 local isKilling = false
 local killInterval = 5
-local killedHumanoidsCount = {}
 local lastKillTime = 0
 local runService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
-local camera = workspace.CurrentCamera
 
 -- Создаем GUI
 local ScreenGui = Instance.new("ScreenGui")
@@ -62,7 +59,7 @@ ToggleButton.MouseButton1Click:Connect(toggleKilling)
 local function findHumanoids()
     local npcs = {}
     for _, v in pairs(workspace:GetDescendants()) do
-        if v:IsA("Humanoid") and v.Parent:FindFirstChildOfClass("Humanoid") then
+        if v:IsA("Humanoid") and v.Parent and v.Parent:FindFirstChildOfClass("Humanoid") then
             -- исключаем игроков
             if not game.Players:GetPlayerFromCharacter(v.Parent) then
                 table.insert(npcs, v.Parent)
@@ -78,12 +75,13 @@ local function highlightNPC(npc)
     local highlight = npc:FindFirstChild("Highlight")
     if not highlight then
         highlight = Instance.new("Highlight")
+        highlight.Name = "Highlight"
         highlight.Adornee = npc
         highlight.FillColor = Color3.fromRGB(255, 0, 0)
         highlight.OutlineColor = Color3.fromRGB(255, 255, 0)
         highlight.Parent = npc
     end
-    highlight.Enabled = isKilling
+    highlight.Enabled = true
 end
 
 local function removeHighlight(npc)
@@ -95,34 +93,8 @@ local function removeHighlight(npc)
     end
 end
 
--- Основной цикл убийства
-runService.Heartbeat:Connect(function()
-    if isKilling then
-        local currentTime = tick()
-        local elapsed = currentTime - lastKillTime
-        updateProgressBar(elapsed / killInterval)
-        if elapsed >= killInterval then
-            -- Убить NPC
-            local npcs = findHumanoids()
-            for _, npc in pairs(npcs) do
-                local humanoid = npc:FindFirstChildOfClass("Humanoid")
-                if humanoid and humanoid.Health > 0 then
-                    -- Подсветка
-                    highlightNPC(npc)
-                    -- Убийство
-                    humanoid.Health = 0
-                end
-            end
-            lastKillTime = currentTime
-            -- Обновление GUI
-            updateKillCount()
-        end
-    else
-        updateProgressBar(0)
-    end
-end)
+local killedHumanoidsCount = {}
 
--- Обновление счетчика
 local function updateKillCount()
     killedHumanoidsCount = {}
     for _, npc in pairs(findHumanoids()) do
@@ -145,14 +117,43 @@ local function updateKillCount()
 end
 
 -- Обновление GUI каждые 0.5 сек
-while true do
-    wait(0.5)
-    updateKillCount()
-end
+coroutine.wrap(function()
+    while true do
+        wait(0.5)
+        updateKillCount()
+    end
+end)()
+
+-- Основной цикл убийства
+runService.Heartbeat:Connect(function()
+    if isKilling then
+        local currentTime = tick()
+        local elapsed = currentTime - lastKillTime
+        updateProgressBar(elapsed / killInterval)
+        if elapsed >= killInterval then
+            -- Убить NPC
+            local npcs = findHumanoids()
+            for _, npc in pairs(npcs) do
+                local humanoid = npc:FindFirstChildOfClass("Humanoid")
+                if humanoid and humanoid.Health > 0 then
+                    -- Подсветка
+                    highlightNPC(npc)
+                    -- Убийство
+                    humanoid.Health = 0
+                end
+            end
+            lastKillTime = currentTime
+            updateKillCount()
+        end
+    else
+        updateProgressBar(0)
+    end
+end)
 
 -- Перемещение GUI
 local dragging = false
-local dragInput, dragStart, startPos
+local dragStart
+local startPos
 
 Frame.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 then
@@ -170,8 +171,7 @@ end)
 
 Frame.InputChanged:Connect(function(input)
     if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-        dragInput = input
-        local delta = dragInput.Position - dragStart
+        local delta = input.Position - dragStart
         Frame.Position = startPos + UDim2.new(0, delta.X, 0, delta.Y)
     end
 end)
